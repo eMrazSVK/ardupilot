@@ -121,6 +121,10 @@
 #include <AP_Frsky_Telem/AP_Frsky_Telem.h>
 #endif
 
+#if ADB_PROTO_ENABLED == ENABLED
+#include <ADB_Proto/ADB_Proto.h>
+#endif
+
 #if ADVANCED_FAILSAFE == ENABLED
 #include "afs_copter.h"
 #endif
@@ -450,6 +454,11 @@ private:
     // FrSky telemetry support
 #if FRSKY_TELEM_ENABLED == ENABLED
     AP_Frsky_Telem frsky_telemetry;
+#endif
+
+    // ADB Protocol
+#if ADB_PROTO_ENABLED == ENABLED
+    ADB_Proto adb_light_proto;
 #endif
 
     // Variables for extended status MAVLink messages

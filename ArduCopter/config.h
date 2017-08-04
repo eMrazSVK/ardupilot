@@ -650,3 +650,7 @@
 #ifndef ADVANCED_FAILSAFE
 # define ADVANCED_FAILSAFE DISABLED
 #endif
+
+#ifndef ADB_PROTO_ENABLED
+  #  define ADB_PROTO_ENABLED          ENABLED
+#endif

@@ -47,6 +47,7 @@ LIBRARIES += AP_Notify
 LIBRARIES += AP_BattMonitor
 LIBRARIES += AP_BoardConfig
 LIBRARIES += AP_Frsky_Telem
+LIBRARIES += ADB_Proto
 LIBRARIES += AC_Sprayer
 LIBRARIES += AP_Parachute
 LIBRARIES += AP_LandingGear

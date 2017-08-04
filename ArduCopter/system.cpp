@@ -173,6 +173,11 @@ void Copter::init_ardupilot()
                          &g.fs_batt_voltage, &g.fs_batt_mah, &ap.value);
 #endif
 
+#if ADB_PROTO_ENABLED == ENABLED
+    //initialize adb_protocol 
+    adb_light_proto.init();
+#endif
+
 #if LOGGING_ENABLED == ENABLED
     log_init();
 #endif
