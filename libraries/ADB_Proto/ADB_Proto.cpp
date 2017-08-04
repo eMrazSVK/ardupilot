@@ -25,7 +25,7 @@
 extern const AP_HAL::HAL& hal;
 
 //constructor
-ADB_Proto::ADB_Proto();
+ADB_Proto::ADB_Proto(){};
 
 
 void ADB_Proto::init(){
