@@ -175,7 +175,7 @@ void Copter::init_ardupilot()
 
 #if ADB_PROTO_ENABLED == ENABLED
     //initialize adb_protocol 
-    adb_light_proto.init();
+    adb_light_proto.init(serial_manager);
 #endif
 
 #if LOGGING_ENABLED == ENABLED

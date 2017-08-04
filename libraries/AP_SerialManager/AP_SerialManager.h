@@ -69,6 +69,11 @@
 #define AP_SERIALMANAGER_ULANDING_BUFSIZE_RX     128
 #define AP_SERIALMANAGER_ULANDING_BUFSIZE_TX     128
 
+//ADB Protocol default baud rate and default buffSizes
+#define AP_SERIALMANAGER_ADB_Proto_BAUD          250000
+#define AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX    64
+#define AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX    64
+
 
 class AP_SerialManager {
 
@@ -89,7 +94,8 @@ public:
         SerialProtocol_FrSky_SPort_Passthrough = 10, // FrSky SPort Passthrough (OpenTX) protocol (X-receivers)
         SerialProtocol_Lidar360 = 11,                // Lightware SF40C or TeraRanger Tower
         SerialProtocol_Aerotenna_uLanding      = 12, // Ulanding support
-        SerialProtocol_Beacon = 13
+        SerialProtocol_Beacon = 13,
+        SerialProtocol_ADB_Proto = 14                // ADB Protocol for ESC
     };
 
     // Constructor

@@ -28,7 +28,7 @@ extern const AP_HAL::HAL& hal;
 ADB_Proto::ADB_Proto(){};
 
 
-void ADB_Proto::init(){
+void ADB_Proto::init(const AP_SerialManager &serial_manager){
 
     frame.START = 0;
     frame.END = 0;
@@ -80,6 +80,8 @@ void ADB_Proto::tick(void){
             init_uart = true;
         }
     }
+
+    ADB_Proto::send_frame(this->frame);
 }    
 
 
@@ -100,11 +102,10 @@ void ADB_Proto::sendEscData(){
 
 }
 
-void ADB_Proto::send_frame(ADB_Frame frame)
+void ADB_Proto::send_frame(ADB_Frame _frame)
 {
     if (ADB_protocol == AP_SerialManager::SerialProtocol_ADB_Proto) { // ADB Proto
-        ADB_Port->write(this->frame.ADDR);
-        
+        ADB_Port->write(_frame.ADDR); 
     } 
 }
 

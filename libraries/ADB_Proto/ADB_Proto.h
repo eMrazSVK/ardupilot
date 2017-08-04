@@ -36,8 +36,8 @@ class ADB_Proto {
         ADB_Proto();
         //send to all ESCs
         void send_frame_to_esc(ADB_Frame frame);
-        void init();
-        void tick();
+        void init(const AP_SerialManager &serial_manager);
+        void tick(void);
         int8_t getCheckSum();
 
     
@@ -50,6 +50,7 @@ class ADB_Proto {
         ADB_Frame frame;
         int8_t checksum_calc();  
         void sendEscData(); 
+        void send_frame(ADB_Frame frame);
 
 }; 
 
