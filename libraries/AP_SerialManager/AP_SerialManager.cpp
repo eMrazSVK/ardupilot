@@ -212,6 +212,11 @@ void AP_SerialManager::init()
                                          AP_SERIALMANAGER_ULANDING_BUFSIZE_RX,
                                          AP_SERIALMANAGER_ULANDING_BUFSIZE_TX);
                     break;
+
+                case SerialProtocol_ADB_Proto:
+                    state[i].baud = AP_SERIALMANAGER_ADB_Proto_BAUD / 1000;
+                    break;
+
             }
         }
     }
