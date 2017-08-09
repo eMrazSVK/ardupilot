@@ -20,6 +20,8 @@
 #include <stdint.h>
 #include <AP_HAL/AP_HAL.h>
 #include <AP_SerialManager/AP_SerialManager.h>
+#include "/home/edo/ardupilot/ArduCopter/GCS_Copter.h"
+#include "/home/edo/ardupilot/ArduCopter/GCS_Mavlink.h"
 
 struct ADB_Frame {
         int8_t START;
@@ -51,6 +53,8 @@ class ADB_Proto {
         int8_t checksum_calc();  
         void sendEscData(); 
         void send_frame(ADB_Frame frame);
+        GCS_Copter _gcs; // avoid using this; use gcs()
+        GCS_Copter &gcs() { return _gcs; }
 
 }; 
 

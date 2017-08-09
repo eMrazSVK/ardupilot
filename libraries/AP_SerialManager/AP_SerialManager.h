@@ -70,7 +70,7 @@
 #define AP_SERIALMANAGER_ULANDING_BUFSIZE_TX     128
 
 //ADB Protocol default baud rate and default buffSizes
-#define AP_SERIALMANAGER_ADB_Proto_BAUD          250000
+#define AP_SERIALMANAGER_ADB_Proto_BAUD          57600
 #define AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX    64
 #define AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX    64
 

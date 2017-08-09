@@ -63,11 +63,11 @@ void ADB_Proto::init(const AP_SerialManager &serial_manager){
     
     //register *ADB::Proto tick()* to scheduler
     if (ADB_Port != nullptr) {
-        hal.scheduler->register_io_process(FUNCTOR_BIND_MEMBER(&ADB_Proto::tick, void));
+        hal.scheduler->register_timer_process(FUNCTOR_BIND_MEMBER(&ADB_Proto::tick, void));
         
-        /*we don't want flow control for either protocol
-         *ADB_Port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
-         */
+        //we don't want flow control for either protocol
+        ADB_Port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
+         
     }   
       
 }
@@ -77,11 +77,13 @@ void ADB_Proto::tick(void){
     if (!init_uart) {
         if (ADB_protocol == AP_SerialManager::SerialProtocol_ADB_Proto){
             ADB_Port->begin(AP_SERIALMANAGER_ADB_Proto_BAUD, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX); 
+            hal.uartE->begin(AP_SERIALMANAGER_ADB_Proto_BAUD, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX);
             init_uart = true;
         }
     }
-
-    ADB_Proto::send_frame(this->frame);
+    hal.uartE->printf("c\n");
+    //ADB_Proto::send_frame(this->frame);
+    
 }    
 
 
@@ -102,10 +104,12 @@ void ADB_Proto::sendEscData(){
 
 }
 
+
 void ADB_Proto::send_frame(ADB_Frame _frame)
 {
     if (ADB_protocol == AP_SerialManager::SerialProtocol_ADB_Proto) { // ADB Proto
-        ADB_Port->write(_frame.ADDR); 
+        //ADB_Port->write(0x5D); 
+        hal.uartE->printf("umri ak nejdes \n");
     } 
 }
 
