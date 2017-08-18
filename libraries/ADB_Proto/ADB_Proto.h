@@ -48,13 +48,17 @@ class ADB_Proto {
         AP_HAL::UARTDriver *ADB_Port;
         AP_SerialManager::SerialProtocol ADB_protocol; 
         bool init_uart;
+        bool send;
+        int16_t desiredValue[16]; //range 900 - 2000 ms
         //Frame to be sent
         ADB_Frame frame;
         int8_t checksum_calc();  
         void sendEscData(); 
         void send_frame(ADB_Frame frame);
+        void parseToMsg(uint16_t *checksum);
         GCS_Copter _gcs; // avoid using this; use gcs()
         GCS_Copter &gcs() { return _gcs; }
+        uint8_t msg[42];
 
 }; 
 

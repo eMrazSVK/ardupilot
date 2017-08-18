@@ -91,6 +91,24 @@ Trebalo pridať v AP_SerialManager v enum SerialProtocol SerialProtocol_ADB_Prot
 
 POZOR! Treba zistiť, ako pridať protokol tak, aby sa zobrazil v MISSION Plannery (bude to niekde v serialmanager.cpp alebo .h)
 
+Na komunikacii (seriovy port) treba poriešiť inicializaciu smerniku ADB_Port - zatial je napevno nastavený Serial5
+
+V súbore SRV_Channel sú funkcie, ktoré môžu pomôcť pri vyčítaní PWM
+
+Funkciu na posielanie do ESC bude treba implementovať do funkcie motors_output(), ktorá je volaná v ArduCopter.cpp
+
+Zatiaľ neriešime read() iba write na serial!!
+
+Funkcia ADB_Proto::tick() sa volá s frekvenciou 1 KHz. My chceme 400 - toto dosiahneme volaním funkcie 
+AP_HAL::millis(), takto (akurát nie % 100, ale s vhodným číslom):
+    
+    if (AP_HAL::millis() % 100 == 0){
+        hal.uartE->write(msg,42);
+    }
+    
+
+
+    
 
 
 

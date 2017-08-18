@@ -29,7 +29,7 @@ ADB_Proto::ADB_Proto(){};
 
 
 void ADB_Proto::init(const AP_SerialManager &serial_manager){
-
+/* HANDLED IN tick()
     frame.START = 0;
     frame.END = 0;
     frame.ADDR = 0;
@@ -45,17 +45,18 @@ void ADB_Proto::init(const AP_SerialManager &serial_manager){
     frame.END |= (1 << 1);
     frame.END |= (1 << 2);
     frame.END |= (1 << 3);   
-    
+    */
     int i;
     
     //fill DATA with default value (temp solution)
-        for (i=0;i<37;i++){
-            frame.DATA[i] = 0;
+        for (i=0;i<16;i++){
+            desiredValue[i] = 800;
         }
         
     //assign checksum value to frame
     frame.CHECKSUM = checksum_calc(); 
     
+
     //find serial available for ADB_Protocol and SET protocol
     if ((ADB_Port = serial_manager.find_serial(AP_SerialManager::SerialProtocol_ADB_Proto, 0))) {
         ADB_protocol = AP_SerialManager::SerialProtocol_ADB_Proto;
@@ -81,10 +82,67 @@ void ADB_Proto::tick(void){
             init_uart = true;
         }
     }
-    hal.uartE->printf("c\n");
-    //ADB_Proto::send_frame(this->frame);
+
+    if (send == 0){
+        send = 1;
+    }
+    else{
+        send = 0;
+    }
+
+    int i;
+    //DAVID, povodne baseTimerHandler
+    uint16_t checksum = 0;
+	msg[0] = 0x8a;
+	checksum += msg[1] = 0; //deviceAddress;
+	checksum += msg[2] = 0; //messageId;
+
+    for (i=0;i<16;i++){
+        desiredValue[i] += 1;
+    }
+
+     if (desiredValue[0] > 2000){
+         for (i = 0;i < 16;i++){
+             desiredValue[i] = 800;
+         }
+     }
+	parseToMsg(&checksum);
+	msg[40] = (~checksum) & 0x7f;
+	msg[41] = 0x8f;
+	//usart1_putbDma(msg, 42); - nahradzuje hal.uartE->write(const uint8_t *buffer, size_t size)
+
+    if (AP_HAL::millis() % 100 == 0){
+        hal.uartE->write(msg,42);
+    }
+    
     
 }    
+
+void ADB_Proto::parseToMsg(uint16_t *checksum)
+{
+	uint16_t count = 16;
+	uint8_t index = 15;
+	uint32_t res = 0;
+	res |= desiredValue[index];
+	*checksum += msg[39] = (res & 0x0f) << 3;
+	res >>= 4;
+	count -= 4;
+	for(int16_t k = 38; k >= 3; k--)
+	{
+		if(count < 7)
+		{
+			uint32_t act = 0;
+			act |= desiredValue[--index];
+			act &= 0xffff;
+			res |= (act << count);
+			count += 16;
+		}
+		*checksum += msg[k] = res & 0x7f;
+		res >>= 7;
+		count -= 7;
+	}
+}
+
 
 
 void ADB_Proto::sendEscData(){

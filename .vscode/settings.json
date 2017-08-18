@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "associative_base": "cpp",
+        "list": "cpp",
+        "vector": "cpp",
+        "array": "cpp",
+        "hash_map": "cpp",
+        "hash_set": "cpp",
+        "initializer_list": "cpp",
+        "valarray": "cpp"
+    }
+}
