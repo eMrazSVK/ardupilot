@@ -350,6 +350,24 @@ void DataFlash_Class::Log_Write_RCOUT(void)
     Log_Write_ESC();
 }
 
+// Write an ADB ESC Packet
+void DataFlash_Class::Log_Write_ADB(ADB_Proto &adb_proto)
+{
+    struct log_ADB pkt = {
+        LOG_PACKET_HEADER_INIT(LOG_ADB_MSG),
+        time_us         : AP_HAL::micros64(),
+        deviceAddr      : adb_proto.tmp_log.deviceAddr,
+        speed           : adb_proto.tmp_log.speed,
+        voltage_s       : adb_proto.tmp_log.voltage_s,
+        current_s       : adb_proto.tmp_log.current_s,
+        v_bus           : adb_proto.tmp_log.v_bus,
+        pwm             : adb_proto.tmp_log.pwm,
+        temp            : adb_proto.tmp_log.temp
+    };
+    WriteBlock(&pkt, sizeof(pkt));
+    Log_Write_ESC();
+}  
+
 // Write an RSSI packet
 void DataFlash_Class::Log_Write_RSSI(AP_RSSI &rssi)
 {

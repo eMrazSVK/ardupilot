@@ -22,7 +22,9 @@
 #include <AP_Rally/AP_Rally.h>
 #include <AP_Beacon/AP_Beacon.h>
 #include <AP_Proximity/AP_Proximity.h>
+#include <ADB_Proto/ADB_Proto.h>
 #include <stdint.h>
+
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4
 #include <uORB/topics/esc_status.h>
@@ -117,6 +119,7 @@ public:
     void Log_Write_Vibration(const AP_InertialSensor &ins);
     void Log_Write_RCIN(void);
     void Log_Write_RCOUT(void);
+    void Log_Write_ADB(ADB_Proto &adb_proto); //tu musi byt vstup ADB_Proto objekt
     void Log_Write_RSSI(AP_RSSI &rssi);
     void Log_Write_Baro(AP_Baro &baro, uint64_t time_us=0);
     void Log_Write_Power(void);
@@ -160,6 +163,7 @@ public:
     // This structure provides information on the internal member data of a PID for logging purposes
     struct PID_Info {
         float desired;
+
         float P;
         float I;
         float D;

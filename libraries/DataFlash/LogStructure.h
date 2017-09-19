@@ -769,6 +769,18 @@ struct PACKED log_Rate {
     float   accel_out;
 };
 
+struct PACKED log_ADB {
+    LOG_PACKET_HEADER;
+    uint64_t  time_us;
+    int8_t    deviceAddr;
+    uint32_t  speed;
+    float     voltage_s;
+    float     current_s;
+    float     v_bus;
+    uint32_t  pwm;
+    uint32_t  temp;
+};
+
 // #if SBP_HW_LOGGING
 
 struct PACKED log_SbpLLH {
@@ -1002,7 +1014,9 @@ Format characters in the format string for binary log messages
     { LOG_BEACON_MSG, sizeof(log_Beacon), \
       "BCN", "QBBfffffff",  "TimeUS,Health,Cnt,D0,D1,D2,D3,PosX,PosY,PosZ" }, \
     { LOG_PROXIMITY_MSG, sizeof(log_Proximity), \
-      "PRX", "QBfffffffffff", "TimeUS,Health,D0,D45,D90,D135,D180,D225,D270,D315,DUp,CAn,CDis" }
+      "PRX", "QBfffffffffff", "TimeUS,Health,D0,D45,D90,D135,D180,D225,D270,D315,DUp,CAn,CDis" }, \
+    { LOG_ADB_MSG, sizeof(log_ADB), \
+      "ADB", "Qiifffii","TimeUS,Addr,V,Vs,Is,Vbus,Pwm,Temp" }
 
 // messages for more advanced boards
 #define LOG_EXTRA_STRUCTURES \
@@ -1295,6 +1309,7 @@ enum LogMessages {
     LOG_AOA_SSA_MSG,
     LOG_BEACON_MSG,
     LOG_PROXIMITY_MSG,
+    LOG_ADB_MSG,
 };
 
 enum LogOriginType {
