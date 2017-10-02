@@ -7,6 +7,18 @@
         "hash_map": "cpp",
         "hash_set": "cpp",
         "initializer_list": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "ostream": "cpp",
+        "algorithm": "cpp",
+        "string": "cpp",
+        "*.tcc": "cpp",
+        "fstream": "cpp",
+        "functional": "cpp",
+        "iterator": "cpp",
+        "type_traits": "cpp",
+        "system_error": "cpp",
+        "bitset": "cpp",
+        "chrono": "cpp",
+        "istream": "cpp"
     }
 }

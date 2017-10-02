@@ -380,6 +380,10 @@ bool GCS_MAVLINK_Copter::try_send_message(enum ap_message id)
         send_sensor_offsets(copter.ins, copter.compass, copter.barometer);
         break;
 
+    case MSG_ADB_ESC:
+        send_adb_esc_info(copter.adb_light_proto);
+        break;
+
     case MSG_RANGEFINDER:
 #if RANGEFINDER_ENABLED == ENABLED
         CHECK_PAYLOAD_SIZE(RANGEFINDER);
@@ -486,9 +490,11 @@ bool GCS_MAVLINK_Copter::try_send_message(enum ap_message id)
         CHECK_PAYLOAD_SIZE(ADSB_VEHICLE);
         copter.adsb.send_adsb_vehicle(chan);
         break;
+
     case MSG_BATTERY_STATUS:
         send_battery_status(copter.battery);
         break;
+        
     default:
         return GCS_MAVLINK::try_send_message(id);
     }

@@ -24,9 +24,7 @@
 #include "/home/edo/ardupilot/ArduCopter/Copter.h"
 
 //constructor
-ADB_Proto::ADB_Proto() : ADB_ringBuf(512){
-     discovered_esc = {}; 
-}
+ADB_Proto::ADB_Proto() : ADB_ringBuf(512) {}
 
 ADB_Proto::~ADB_Proto(){
     free(active_device_addr);
@@ -45,6 +43,7 @@ void ADB_Proto::init(const AP_SerialManager &serial_manager){
     time_count_old_2nd = 0;
     discard_count = 0;
     esc_discovery  = false;
+    discovered_esc = {}; 
     esc_discovery_start = 0;
     set_active_devices = false;
     init_uart = false;
@@ -66,7 +65,7 @@ void ADB_Proto::init(const AP_SerialManager &serial_manager){
     
     //fill DATA with default value (temp solution)
         for (i=0;i<ADB_DEVICE_COUNT;i++){
-            desiredValue[i] = 800;
+            desiredValue[i] = 0;
             active_device_addr[i] = 0;
         }
 
@@ -168,7 +167,6 @@ void ADB_Proto::tick(void){
             set_active_devices = true;
         }
     }
-    
     if ((esc_discovery) && (ADB_DEVICE_COUNT != 0)){
 
         checksum = 0;
@@ -178,8 +176,37 @@ void ADB_Proto::tick(void){
         msg[ind++] = ADB_LIGHT_HEADER_BYTE;
         checksum += msg[ind++] = active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT];
         checksum += msg[ind++] = message_ids[GLOBAL_ID_COUNT];
-        ind = parseToMsg(&checksum, ind);
-        
+
+        switch (active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]) {
+            case 0x01: 
+                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_1);
+                break;
+            case 0x02:
+                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_2);
+                break;
+            case 0x03:
+                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_3); 
+                break;
+            case 0x04:
+                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_4); 
+                break;
+            case 0x05: 
+                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_5);
+                break;
+            case 0x06:
+                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_6);
+                break;
+            case 0x07:
+                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_7);
+                break;
+            case 0x08:
+                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_8);
+                break;
+            default:
+                return;
+        }
+
+        ind = parseToMsg(&checksum, ind);  
         msg[ind++] = (~checksum) & 0x7f;
         msg[ind++] = ADB_LIGHT_END_BYTE;
         hal.uartE->write(msg, ind);
@@ -193,6 +220,7 @@ void ADB_Proto::tick(void){
             }
             ADB_ringBuf.write(recBuf, bytesAvailable);
         } 
+        
     }
         
     GLOBAL_ADDR_COUNT++;

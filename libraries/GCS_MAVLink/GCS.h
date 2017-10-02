@@ -52,6 +52,7 @@ enum ap_message {
     MSG_LIMITS_STATUS,
     MSG_FENCE_STATUS,
     MSG_AHRS,
+    MSG_ADB_ESC,
     MSG_SIMSTATE,
     MSG_HWSTATUS,
     MSG_WIND,
@@ -167,6 +168,7 @@ public:
     void send_sensor_offsets(const AP_InertialSensor &ins, const Compass &compass, AP_Baro &barometer);
     void send_ahrs(AP_AHRS &ahrs);
     void send_battery2(const AP_BattMonitor &battery);
+    void send_adb_esc_info(ADB_Proto &esc_info);
 #if AP_AHRS_NAVEKF_AVAILABLE
     void send_opticalflow(AP_AHRS_NavEKF &ahrs, const OpticalFlow &optflow);
 #endif

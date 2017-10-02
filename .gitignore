@@ -88,3 +88,5 @@ status.txt
 tags
 terrain/
 test.ArduCopter/*
+TMP/*
+DEV_LOGS/*

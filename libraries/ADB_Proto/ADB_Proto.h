@@ -21,6 +21,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_SerialManager/AP_SerialManager.h>
 #include <AP_HAL/utility/RingBuffer.h>
+
 //#include "ADB_IO_LOG.h"
 
 //extern const AP_HAL::HAL& hal;
@@ -88,7 +89,6 @@ enum class device_addresses : uint8_t {
 */
 
 class ADB_Proto {
-    friend class DataFlash_Class;
     public:
         ADB_Proto();
         ~ADB_Proto();
@@ -97,6 +97,7 @@ class ADB_Proto {
         int GLOBAL_ADDR_COUNT;
         int GLOBAL_ID_COUNT;
         void msgProc();
+        internal_log_msg tmp_log;
         
     private:
         //port used for ADB Protocol 
@@ -130,7 +131,6 @@ class ADB_Proto {
         uint8_t current_request_type;
         int8_t pomocna;
         ByteBuffer ADB_ringBuf;
-        internal_log_msg tmp_log;
         uint16_t ADB_LookUpTableMask[17] = {
 								0x0000, 0x0001, 0x0003, 0x0007,
 								0x000f, 0x001f, 0x003f, 0x007f,

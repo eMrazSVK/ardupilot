@@ -1176,6 +1176,22 @@ void GCS_MAVLINK::send_ahrs(AP_AHRS &ahrs)
         ahrs.get_error_yaw());
 }
 
+//Send ADB ESC to MAVLink
+void GCS_MAVLINK::send_adb_esc_info(ADB_Proto &esc_data)
+{
+    mavlink_msg_adb_esc_data_send(
+        chan,
+        AP_HAL::millis(),
+        esc_data.tmp_log.deviceAddr,
+        esc_data.tmp_log.speed,
+        esc_data.tmp_log.voltage_s,
+        esc_data.tmp_log.current_s,
+        esc_data.tmp_log.v_bus,
+        esc_data.tmp_log.pwm,
+        esc_data.tmp_log.temp
+    );
+}
+
 /*
     send a statustext text string to specific MAVLink bitmask
 */
@@ -1214,6 +1230,8 @@ void GCS::send_statustext(MAV_SEVERITY severity, uint8_t dest_bitmask, const cha
         notify->send_text(text);
     }
 }
+
+
 
 /*
     send a statustext message to specific MAVLink connections in a bitmask

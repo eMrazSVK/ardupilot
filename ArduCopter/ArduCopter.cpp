@@ -382,6 +382,9 @@ void Copter::ten_hz_logging_loop()
         Log_Write_Attitude();
         Log_Write_EKF_POS();
     }
+
+    gcs().send_message(MSG_ADB_ESC);
+    
     if (should_log(MASK_LOG_MOTBATT)) {
         Log_Write_MotBatt();
     }
@@ -475,7 +478,6 @@ void Copter::one_hz_loop()
     if (should_log(MASK_LOG_ANY)) {
         Log_Write_Data(DATA_AP_STATE, ap.value);
     }
-
     arming.update();
 
     if (!motors->armed()) {
