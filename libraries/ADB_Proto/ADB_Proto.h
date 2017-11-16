@@ -22,10 +22,6 @@
 #include <AP_SerialManager/AP_SerialManager.h>
 #include <AP_HAL/utility/RingBuffer.h>
 
-//#include "ADB_IO_LOG.h"
-
-//extern const AP_HAL::HAL& hal;
-
 
 #define ADB_MSG_LENGTH          42
 #define ADB_MAX_DEVICE_COUNT    8
@@ -44,7 +40,7 @@
 
 
 typedef struct {
-  int8_t    deviceAddr;  
+  int8_t    deviceAddr;
   uint32_t  speed;
   float     voltage_s;
   float     current_s;
@@ -63,30 +59,6 @@ typedef struct {
     bool ch_7;
     bool ch_8;
 } active_esc;
-
-/*
-enum message_ids {
-    Speed = 0x01,
-    Vs    = 0x02,
-    Is    = 0x03,
-    Vbus  = 0x04,
-    Pwm   = 0x05,
-    Temp  = 0x06
-};
-*/
-
-/*
-enum class device_addresses : uint8_t {
-    esc_1   = 1,
-    esc_2   = 2,
-    esc_3   = 3,
-    esc_4   = 4,
-    esc_5   = 5,
-    esc_6   = 6,
-    esc_7   = 7,
-    esc_8   = 8 
-}
-*/
 
 class ADB_Proto {
     public:
@@ -137,7 +109,7 @@ class ADB_Proto {
 								0x00ff, 0x01ff, 0x03ff, 0x07ff,
 								0x0fff, 0x1fff, 0x3fff, 0x7fff,
 								0xffff
-							 };  
+							    };  
         uint8_t device_address[8] = {1, 2, 3, 4, 5, 6, 7, 8};  
         uint8_t message_ids[6] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
         bool esc_discovery;

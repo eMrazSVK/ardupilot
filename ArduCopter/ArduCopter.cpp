@@ -291,6 +291,7 @@ void Copter::fast_loop()
         Log_Sensor_Health();
     }
 
+    // sending/receiving ADB MSGs to/from ESCs
 #if ADB_PROTO_ENABLED == ENABLED
     adb_light_proto.tick();
 #endif
@@ -383,6 +384,7 @@ void Copter::ten_hz_logging_loop()
         Log_Write_EKF_POS();
     }
 
+    //Send ADB Packet to GCS
     gcs().send_message(MSG_ADB_ESC);
     
     if (should_log(MASK_LOG_MOTBATT)) {
