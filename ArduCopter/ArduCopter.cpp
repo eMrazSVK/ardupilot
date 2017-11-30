@@ -291,11 +291,14 @@ void Copter::fast_loop()
         Log_Sensor_Health();
     }
 
+/*
     // sending/receiving ADB MSGs to/from ESCs
 #if ADB_PROTO_ENABLED == ENABLED
     adb_light_proto.tick();
 #endif
+*/
 }
+
 
 // rc_loops - reads user input from transmitter/receiver
 // called at 100hz
@@ -410,10 +413,6 @@ void Copter::ten_hz_logging_loop()
         Log_Write_Proximity();
         Log_Write_Beacon();
     }
-
-#if ADB_PROTO_ENABLED == ENABLED
-    DataFlash.Log_Write_ADB(adb_light_proto);
-#endif
 
 #if FRAME_CONFIG == HELI_FRAME
     Log_Write_Heli();

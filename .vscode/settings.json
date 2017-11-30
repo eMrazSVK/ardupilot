@@ -19,6 +19,7 @@
         "system_error": "cpp",
         "bitset": "cpp",
         "chrono": "cpp",
-        "istream": "cpp"
+        "istream": "cpp",
+        "ratio": "cpp"
     }
 }

@@ -34,24 +34,17 @@ void ADB_Proto::init(const AP_SerialManager &serial_manager){
 
     int i;
     GLOBAL_ADDR_COUNT = 0;
-    GLOBAL_ID_COUNT = 0;
-    send_rec = 0;
-    rec_time = 0;
-    time_count_new = 0;
-    time_count_old = 0;
-    time_count_new_2nd = 0;
-    time_count_old_2nd = 0;
-    discard_count = 0;
     esc_discovery  = false;
     discovered_esc = {}; 
     esc_discovery_start = 0;
     set_active_devices = false;
     init_uart = false;
     init_uart_2 = false;
-    wait_for_response = false;
     ADB_DEVICE_COUNT = ADB_MAX_DEVICE_COUNT;
     MOTOR_COUNT = ADB_MAX_DEVICE_COUNT;
     ADB_ringBuf.set_size(512);
+    sync_timer_counter_current = 0;
+    sync_timer_counter_past = 0;
 
     discovered_esc.ch_1 = false;
     discovered_esc.ch_2 = false;
@@ -75,13 +68,14 @@ void ADB_Proto::init(const AP_SerialManager &serial_manager){
     
     //register *ADB::Proto tick()* to scheduler - NOW called from Copter::fast_loop()
     if (ADB_Port != nullptr) {
-        //hal.scheduler->register_timer_process(FUNCTOR_BIND_MEMBER(&ADB_Proto::tick, void));
+        hal.scheduler->register_timer_process(FUNCTOR_BIND_MEMBER(&ADB_Proto::tick, void));
+        hal.scheduler->register_timer_process(FUNCTOR_BIND_MEMBER(&ADB_Proto::msgProc, void));
         //we don't want flow control for either protocol
         //ADB_Port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);   
     }   
 
     //Register ADB_Proto::msgProc to Scheduler
-    hal.scheduler->register_timer_process(FUNCTOR_BIND_MEMBER(&ADB_Proto::msgProc, void));
+    
 }
 
 void ADB_Proto::tick(void){
@@ -89,151 +83,178 @@ void ADB_Proto::tick(void){
     //Initialize UART for ADB Protocol, it have to be initialised from thread which is used from
     if (!init_uart) {
         if (ADB_protocol == AP_SerialManager::SerialProtocol_ADB_Proto){
-            //ADB_Port->begin(AP_SERIALMANAGER_ADB_Proto_BAUD, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX); 
+            ADB_Port->begin(AP_SERIALMANAGER_ADB_Proto_BAUD, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX); 
             hal.uartE->begin(AP_SERIALMANAGER_ADB_Proto_BAUD, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX);
-            //hal.uartD->begin(115200, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX);
+            hal.uartD->begin(AP_SERIALMANAGER_ADB_Proto_BAUD, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX);
             init_uart = true;
+            //ADB_Port = hal.uartE;
         }    
     }
 
-    //SET number of online ESCs and their addresses 
-    if (set_active_devices){
-        int i = 0;
-        ADB_DEVICE_COUNT = 0;
+    sync_timer_counter_current = AP_HAL::micros() / 2500;
 
-        if (discovered_esc.ch_1) ADB_DEVICE_COUNT++; 
-        if (discovered_esc.ch_2) ADB_DEVICE_COUNT++; 
-        if (discovered_esc.ch_3) ADB_DEVICE_COUNT++; 
-        if (discovered_esc.ch_4) ADB_DEVICE_COUNT++; 
-        if (discovered_esc.ch_5) ADB_DEVICE_COUNT++; 
-        if (discovered_esc.ch_6) ADB_DEVICE_COUNT++; 
-        if (discovered_esc.ch_7) ADB_DEVICE_COUNT++; 
-        if (discovered_esc.ch_8) ADB_DEVICE_COUNT++; 
+    /*
+    if (ADB_Port == hal.uartA) hal.uartD->write(0x01);
+    if (ADB_Port == hal.uartB) hal.uartD->write(0x02);
+    if (ADB_Port == hal.uartC) hal.uartD->write(0x03);
+    if (ADB_Port == hal.uartD) hal.uartD->write(0x04);
+    if (ADB_Port == hal.uartE) hal.uartD->write(0x05);
+    else hal.uartD->write(0x06);
+    */
 
-        if (discovered_esc.ch_1) active_device_addr[i++] = 1;
-        if (discovered_esc.ch_2) active_device_addr[i++] = 2;
-        if (discovered_esc.ch_3) active_device_addr[i++] = 3;
-        if (discovered_esc.ch_4) active_device_addr[i++] = 4;
-        if (discovered_esc.ch_5) active_device_addr[i++] = 5;
-        if (discovered_esc.ch_6) active_device_addr[i++] = 6;
-        if (discovered_esc.ch_7) active_device_addr[i++] = 7;
-        if (discovered_esc.ch_8) active_device_addr[i++] = 8;
-        
-        set_active_devices = false;
-        GLOBAL_ADDR_COUNT  = 0;
-        esc_discovery      = true;
-    }
+    if (sync_timer_counter_current > sync_timer_counter_past) {
+        //SET number of online ESCs and their addresses 
+        if (set_active_devices){
+            int i = 0;
+            ADB_DEVICE_COUNT = 0;
 
-    uint16_t checksum;
-    uint16_t ind;
-    uint32_t bytesAvailable;
+            if (discovered_esc.ch_1) ADB_DEVICE_COUNT++; 
+            if (discovered_esc.ch_2) ADB_DEVICE_COUNT++; 
+            if (discovered_esc.ch_3) ADB_DEVICE_COUNT++; 
+            if (discovered_esc.ch_4) ADB_DEVICE_COUNT++; 
+            if (discovered_esc.ch_5) ADB_DEVICE_COUNT++; 
+            if (discovered_esc.ch_6) ADB_DEVICE_COUNT++; 
+            if (discovered_esc.ch_7) ADB_DEVICE_COUNT++; 
+            if (discovered_esc.ch_8) ADB_DEVICE_COUNT++; 
 
-    //SCAN/Discovery of connected ESCs for the first 10 seconds after boot
-    if (!esc_discovery){
-
-        if (!esc_discovery_started){
-            esc_discovery_start = AP_HAL::millis();
-            esc_discovery_started = true;
-        }
-
-        checksum = 0;
-        ind = 0;
-        bytesAvailable = 0;
-
-        msg[ind++] = ADB_LIGHT_HEADER_BYTE;
-        checksum += msg[ind++] = device_address[GLOBAL_ADDR_COUNT];
-        checksum += msg[ind++] = 1;
-        ind = parseToMsg(&checksum, ind);
-        msg[ind++] = (~checksum) & 0x7f;
-        msg[ind++] = ADB_LIGHT_END_BYTE;
-        hal.uartE->write(msg, ind);    
-
-        bytesAvailable = hal.uartE->available();
-
-        if (bytesAvailable >= 1){
-            for (uint32_t k = 0; k < bytesAvailable; k++){
-                recBuf[k] = hal.uartE->read();
-            }
-        }
-        
-        ADB_ringBuf.write(recBuf, bytesAvailable);
-
-        if ((AP_HAL::millis() - esc_discovery_start) > 10000){
-            set_active_devices = true;
-        }
-    }
-
-    //Main cycle after ESC Discovery is finished
-    if ((esc_discovery) && (ADB_DEVICE_COUNT != 0)){
-
-        checksum = 0;
-        ind = 0;
-        bytesAvailable = 0;
-
-        msg[ind++] = ADB_LIGHT_HEADER_BYTE;
-        checksum += msg[ind++] = active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT];
-        checksum += msg[ind++] = message_ids[GLOBAL_ID_COUNT];
-
-        //Set desired PWM value equal to RCOUT
-        switch (active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]) {
-            case 0x01: 
-                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_1);
-                break;
-            case 0x02:
-                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_2);
-                break;
-            case 0x03:
-                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_3); 
-                break;
-            case 0x04:
-                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_4); 
-                break;
-            case 0x05: 
-                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_5);
-                break;
-            case 0x06:
-                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_6);
-                break;
-            case 0x07:
-                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_7);
-                break;
-            case 0x08:
-                desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]-1] = hal.rcout->read(CH_8);
-                break;
-            default:
-                return;
-        }
-
-        //Send message to ESC
-        ind = parseToMsg(&checksum, ind);  
-        msg[ind++] = (~checksum) & 0x7f;
-        msg[ind++] = ADB_LIGHT_END_BYTE;
-        hal.uartE->write(msg, ind);
-
-        bytesAvailable = hal.uartE->available();
-
-        //Read Available bytes from UART aand write it to RingBuffer
-        if (bytesAvailable >= 1) {
+            if (discovered_esc.ch_1) active_device_addr[i++] = 0;
+            if (discovered_esc.ch_2) active_device_addr[i++] = 1;
+            if (discovered_esc.ch_3) active_device_addr[i++] = 2;
+            if (discovered_esc.ch_4) active_device_addr[i++] = 3;
+            if (discovered_esc.ch_5) active_device_addr[i++] = 4;
+            if (discovered_esc.ch_6) active_device_addr[i++] = 5;
+            if (discovered_esc.ch_7) active_device_addr[i++] = 6;
+            if (discovered_esc.ch_8) active_device_addr[i++] = 7;
             
-            for (uint32_t j = 0; j < bytesAvailable; j++){
-                recBuf[j] = hal.uartE->read();
-            }
-            ADB_ringBuf.write(recBuf, bytesAvailable);
-        } 
+            set_active_devices = false;
+            GLOBAL_ADDR_COUNT  = 0;
+            esc_discovery      = true;
+        }
         
-    }
-        
-    GLOBAL_ADDR_COUNT++;
-    
-    //Change ESC addresses cyclically
-    if ((GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT) == 0){
-        GLOBAL_ADDR_COUNT = 0;
+        uint16_t checksum;
+        uint16_t ind;
+        uint32_t bytesAvailable;
 
-        if ((GLOBAL_ID_COUNT % ADB_MESSAGE_ID_COUNT) == 0){
-            GLOBAL_ID_COUNT = 0;
+        //SCAN/Discovery of connected ESCs for the first 10 seconds after boot
+        if (!esc_discovery){
+
+            if (!esc_discovery_started){
+                esc_discovery_start = AP_HAL::millis();
+                esc_discovery_started = true;
+            }
+
+            checksum = 0;
+            ind = 0;
+            bytesAvailable = 0;
+
+            msg[ind++] = ADB_LIGHT_HEADER_BYTE;
+            checksum += msg[ind++] = device_address[GLOBAL_ADDR_COUNT];
+            checksum += msg[ind++] = 1;
+            ind = parseToMsg(&checksum, ind);
+            msg[ind++] = (~checksum) & 0x7f;
+            msg[ind++] = ADB_LIGHT_END_BYTE;
+            //hal.uartE->write(msg, ind); 
+            //hal.uartD->write(msg, ind); 
+            ADB_Port->write(msg, ind);    
+
+            //bytesAvailable = hal.uartE->available();
+            bytesAvailable = ADB_Port->available();
+
+            if (bytesAvailable >= 1){
+                for (uint32_t k = 0; k < bytesAvailable; k++){
+                    //recBuf[k] = hal.uartE->read();
+                    recBuf[k] = ADB_Port->read();
+                    hal.uartD->write(recBuf[k]);
+                }
+            }
+            
+            ADB_ringBuf.write(recBuf, bytesAvailable);
+
+            if ((AP_HAL::millis() - esc_discovery_start) > 10000){
+                set_active_devices = true;
+            }
         }
 
-        GLOBAL_ID_COUNT++;
+        // if ((esc_discovery) && (ADB_DEVICE_COUNT == 0)) hal.uartD->write(0x0e);
+        //Main cycle after ESC Discovery is finished
+        if ((esc_discovery) && (ADB_DEVICE_COUNT != 0)){
+
+            checksum = 0;
+            ind = 0;
+            bytesAvailable = 0;
+
+            msg[ind++] = ADB_LIGHT_HEADER_BYTE;
+            checksum += msg[ind++] = active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT];
+            checksum += msg[ind++] = message_ids[GLOBAL_ID_COUNT];
+
+            //Set desired PWM value equal to RCOUT
+            switch (active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]) {
+                case 0x00: 
+                    desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]] = hal.rcout->read(CH_1);
+                    break;
+                case 0x01:
+                    desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]] = hal.rcout->read(CH_2);
+                    break;
+                case 0x02:
+                    desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]] = hal.rcout->read(CH_3); 
+                    break;
+                case 0x03:
+                    desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]] = hal.rcout->read(CH_4); 
+                    break;
+                case 0x04: 
+                    desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]] = hal.rcout->read(CH_5);
+                    break;
+                case 0x05:
+                    desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]] = hal.rcout->read(CH_6);
+                    break;
+                case 0x06:
+                    desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]] = hal.rcout->read(CH_7);
+                    break;
+                case 0x07:
+                    desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]] = hal.rcout->read(CH_8);
+                    break;
+                default:
+                    return;
+            }
+
+            //Send message to ESC
+            ind = parseToMsg(&checksum, ind);  
+            msg[ind++] = (~checksum) & 0x7f;
+            msg[ind++] = ADB_LIGHT_END_BYTE;
+            // hal.uartE->write(msg, ind);
+            
+            ADB_Port->write(msg, ind);
+
+            //bytesAvailable = hal.uartE->available();
+            bytesAvailable = ADB_Port->available();
+
+            //Read Available bytes from UART aand write it to RingBuffer
+            if (bytesAvailable >= 1) {
+                
+                for (uint32_t j = 0; j < bytesAvailable; j++){
+                    //recBuf[j] = hal.uartE->read();
+                    recBuf[j] = ADB_Port->read();
+                    hal.uartD->write(recBuf[j]); 
+                }
+                ADB_ringBuf.write(recBuf, bytesAvailable);
+            } 
+            
+        }
+            
+        GLOBAL_ADDR_COUNT++;
+        
+        //Change ESC addresses cyclically
+        if ((GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT) == 0){
+            GLOBAL_ADDR_COUNT = 0;
+
+            if ((GLOBAL_ID_COUNT % ADB_MESSAGE_ID_COUNT) == 0){
+                GLOBAL_ID_COUNT = 0;
+            }
+
+            GLOBAL_ID_COUNT++;
+        }
+
+        sync_timer_counter_past = sync_timer_counter_current;
     }
 }    
 
@@ -354,28 +375,28 @@ void ADB_Proto::prepareMsg(){
     //Save which ESCs are responding
     if((chcksum == (recMsgBuf[3] & 0x0f)) && !esc_discovery){
         switch (deviceAddress) {
-            case 1:
+            case 0:
                 discovered_esc.ch_1 = true;
                 break;
-            case 2:
+            case 1:
                 discovered_esc.ch_2 = true;
                 break;
-            case 3:
+            case 2:
                 discovered_esc.ch_3 = true;
                 break;
-            case 4:
+            case 3:
                 discovered_esc.ch_4 = true;
                 break;
-            case 5:
+            case 4:
                 discovered_esc.ch_5 = true;
                 break;
-            case 6:
+            case 5:
                 discovered_esc.ch_6 = true;
                 break;
-            case 7:
+            case 6:
                 discovered_esc.ch_7 = true;
                 break;
-            case 8:
+            case 7:
                 discovered_esc.ch_8 = true;
                 break;
         }
@@ -388,44 +409,39 @@ void ADB_Proto::prepareMsg(){
             {
                 case 0x01:
                 {
-                    value = value / 1024;
-                    tmp_log.speed = value;
-                    hal.uartD->write(value);
+                    float val0 =  (float)value / 1024;
+                    tmp_log.speed = val0;
+                    //hal.uartD->write(value);
                 }
                     break;
                 case 0x02: 
                 {
-                    value = value / 8;
-                
-                    float val1 = (float)value / 10;
-                    hal.uartD->write(value);     
+                    float val1 = (float)value / 80;
+                    //hal.uartD->write(value);     
                     tmp_log.voltage_s = val1;
                 }
                     break;
                 case 0x03: 
                 {
-                    value = value / 8;
-                    float val3 = (float)value / 10;
+                    float val3 = (float)value / 80;
                     tmp_log.current_s = val3;
-                    hal.uartD->write(value);  
+                    //hal.uartD->write(value);  
                 }
                     break;
                 case 0x04: 
                 {
-                    value = value / 8;
-
-                    float val2 = (float)value / 10;
+                    float val2 = (float)value / 8;
                     tmp_log.v_bus = val2;
-                    hal.uartD->write(value);;
+                    //hal.uartD->write(value);;
                 }
                     break;
                 case 0x05:
                     tmp_log.pwm = value;
-                    hal.uartD->write(value); 
+                    //hal.uartD->write(value); 
                     break;
                 case 0x06:
-                    tmp_log.temp = value;
-                    hal.uartD->write(value); 
+                    tmp_log.temp = value - 31;
+                    //hal.uartD->write(value); 
                     break;
                 default:
                     return;

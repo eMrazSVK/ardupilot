@@ -41,7 +41,7 @@
 
 typedef struct {
   int8_t    deviceAddr;
-  uint32_t  speed;
+  float     speed;
   float     voltage_s;
   float     current_s;
   float     v_bus;
@@ -75,18 +75,12 @@ class ADB_Proto {
         //port used for ADB Protocol 
         AP_HAL::UARTDriver *ADB_Port;
         AP_SerialManager::SerialProtocol ADB_protocol; 
+        bool tmp;
         bool init_uart;
         bool init_uart_2;
-        int send_rec; //flag send or receive (0 if sending, 1 if receiving)
-        int discard_count;
-        bool do_discard_count;
-        bool wait_for_response;
-        uint32_t rec_time; //measure receive time
-        uint16_t desiredValue[8]; //range 900 - 2000 ms
-        uint32_t time_count_new;
-        uint32_t time_count_old;
-        uint32_t time_count_new_2nd;
-        uint32_t time_count_old_2nd;
+        uint16_t desiredValue[8]; // range 800 - 2000 ms
+        uint32_t sync_timer_counter_current;
+        uint32_t sync_timer_counter_past;
         int parseToMsg(uint16_t *checksum, uint16_t actualIndex);
         void recByteProc(uint8_t received);
         void prepareMsg();
@@ -97,11 +91,7 @@ class ADB_Proto {
 		int startRec;
         int ADB_DEVICE_COUNT;
         int MOTOR_COUNT;
-        int id_counter;
         int8_t active_device_addr[ADB_MAX_DEVICE_COUNT];
-        uint8_t requested_esc;
-        uint8_t current_request_type;
-        int8_t pomocna;
         ByteBuffer ADB_ringBuf;
         uint16_t ADB_LookUpTableMask[17] = {
 								0x0000, 0x0001, 0x0003, 0x0007,
@@ -110,7 +100,7 @@ class ADB_Proto {
 								0x0fff, 0x1fff, 0x3fff, 0x7fff,
 								0xffff
 							    };  
-        uint8_t device_address[8] = {1, 2, 3, 4, 5, 6, 7, 8};  
+        uint8_t device_address[8] = {0, 1, 2, 3, 4, 5, 6, 7};  
         uint8_t message_ids[6] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
         bool esc_discovery;
         bool esc_discovery_started;

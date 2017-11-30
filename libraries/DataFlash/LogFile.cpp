@@ -349,7 +349,7 @@ void DataFlash_Class::Log_Write_RCOUT(void)
     WriteBlock(&pkt, sizeof(pkt));
     Log_Write_ESC();
 }
-
+/*
 // Write an ADB ESC Packet
 void DataFlash_Class::Log_Write_ADB(ADB_Proto &adb_proto)
 {
@@ -367,7 +367,7 @@ void DataFlash_Class::Log_Write_ADB(ADB_Proto &adb_proto)
     WriteBlock(&pkt, sizeof(pkt));
     Log_Write_ESC();
 }  
-
+*/
 // Write an RSSI packet
 void DataFlash_Class::Log_Write_RSSI(AP_RSSI &rssi)
 {
