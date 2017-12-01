@@ -21,10 +21,11 @@
 */
 
 #include "ADB_Proto.h"
-#include "/home/edo/ardupilot/ArduCopter/Copter.h"
+//#include "/home/edo/ardupilot/ArduCopter/Copter.h"
+extern const AP_HAL::HAL& hal;
 
 //constructor
-ADB_Proto::ADB_Proto() : ADB_ringBuf(512) {}
+ADB_Proto::ADB_Proto() : ADB_ringBuf(128) {}
 
 ADB_Proto::~ADB_Proto(){
     free(active_device_addr);
@@ -42,7 +43,7 @@ void ADB_Proto::init(const AP_SerialManager &serial_manager){
     init_uart_2 = false;
     ADB_DEVICE_COUNT = ADB_MAX_DEVICE_COUNT;
     MOTOR_COUNT = ADB_MAX_DEVICE_COUNT;
-    ADB_ringBuf.set_size(512);
+    ADB_ringBuf.set_size(128);
     sync_timer_counter_current = 0;
     sync_timer_counter_past = 0;
 
@@ -72,10 +73,7 @@ void ADB_Proto::init(const AP_SerialManager &serial_manager){
         hal.scheduler->register_timer_process(FUNCTOR_BIND_MEMBER(&ADB_Proto::msgProc, void));
         //we don't want flow control for either protocol
         //ADB_Port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);   
-    }   
-
-    //Register ADB_Proto::msgProc to Scheduler
-    
+    }
 }
 
 void ADB_Proto::tick(void){
@@ -84,24 +82,21 @@ void ADB_Proto::tick(void){
     if (!init_uart) {
         if (ADB_protocol == AP_SerialManager::SerialProtocol_ADB_Proto){
             ADB_Port->begin(AP_SERIALMANAGER_ADB_Proto_BAUD, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX); 
-            hal.uartE->begin(AP_SERIALMANAGER_ADB_Proto_BAUD, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX);
-            hal.uartD->begin(AP_SERIALMANAGER_ADB_Proto_BAUD, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX);
             init_uart = true;
-            //ADB_Port = hal.uartE;
         }    
     }
 
     sync_timer_counter_current = AP_HAL::micros() / 2500;
 
-    /*
-    if (ADB_Port == hal.uartA) hal.uartD->write(0x01);
-    if (ADB_Port == hal.uartB) hal.uartD->write(0x02);
-    if (ADB_Port == hal.uartC) hal.uartD->write(0x03);
-    if (ADB_Port == hal.uartD) hal.uartD->write(0x04);
-    if (ADB_Port == hal.uartE) hal.uartD->write(0x05);
-    else hal.uartD->write(0x06);
+    /* FOR TESTING UART
+    if (ADB_Port == hal.uartA) hal.uartD->write(0x0A);
+    if (ADB_Port == hal.uartB) hal.uartD->write(0x0B);
+    if (ADB_Port == hal.uartC) hal.uartD->write(0x0C);
+    if (ADB_Port == hal.uartD) hal.uartD->write(0x0D);
+    if (ADB_Port == hal.uartE) hal.uartD->write(0x0E);
+    if (ADB_Port == hal.uartF) hal.uartD->write(0x0F);
     */
-
+    
     if (sync_timer_counter_current > sync_timer_counter_past) {
         //SET number of online ESCs and their addresses 
         if (set_active_devices){
@@ -164,7 +159,7 @@ void ADB_Proto::tick(void){
                 for (uint32_t k = 0; k < bytesAvailable; k++){
                     //recBuf[k] = hal.uartE->read();
                     recBuf[k] = ADB_Port->read();
-                    hal.uartD->write(recBuf[k]);
+                    //hal.uartD->write(recBuf[k]);
                 }
             }
             
@@ -234,7 +229,7 @@ void ADB_Proto::tick(void){
                 for (uint32_t j = 0; j < bytesAvailable; j++){
                     //recBuf[j] = hal.uartE->read();
                     recBuf[j] = ADB_Port->read();
-                    hal.uartD->write(recBuf[j]); 
+                  // hal.uartD->write(recBuf[j]); 
                 }
                 ADB_ringBuf.write(recBuf, bytesAvailable);
             } 
@@ -416,14 +411,14 @@ void ADB_Proto::prepareMsg(){
                     break;
                 case 0x02: 
                 {
-                    float val1 = (float)value / 80;
+                    float val1 = (float)value / 8;
                     //hal.uartD->write(value);     
                     tmp_log.voltage_s = val1;
                 }
                     break;
                 case 0x03: 
                 {
-                    float val3 = (float)value / 80;
+                    float val3 = (float)value / 8;
                     tmp_log.current_s = val3;
                     //hal.uartD->write(value);  
                 }

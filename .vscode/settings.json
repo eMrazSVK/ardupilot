@@ -20,6 +20,7 @@
         "bitset": "cpp",
         "chrono": "cpp",
         "istream": "cpp",
-        "ratio": "cpp"
+        "ratio": "cpp",
+        "ios": "cpp"
     }
 }
