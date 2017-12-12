@@ -46,6 +46,9 @@ void ADB_Proto::init(const AP_SerialManager &serial_manager){
     ADB_ringBuf.set_size(128);
     sync_timer_counter_current = 0;
     sync_timer_counter_past = 0;
+    good_packet_count = 0;
+    bad_packet_count = 0;
+    processing_packet = false;
 
     discovered_esc.ch_1 = false;
     discovered_esc.ch_2 = false;
@@ -67,7 +70,7 @@ void ADB_Proto::init(const AP_SerialManager &serial_manager){
         ADB_protocol = AP_SerialManager::SerialProtocol_ADB_Proto;
     }
     
-    //register *ADB::Proto tick()* to scheduler - NOW called from Copter::fast_loop()
+    // register *ADB::Proto tick()* to scheduler - NOW called from Copter::fast_loop()
     if (ADB_Port != nullptr) {
         hal.scheduler->register_timer_process(FUNCTOR_BIND_MEMBER(&ADB_Proto::tick, void));
         hal.scheduler->register_timer_process(FUNCTOR_BIND_MEMBER(&ADB_Proto::msgProc, void));
@@ -78,26 +81,18 @@ void ADB_Proto::init(const AP_SerialManager &serial_manager){
 
 void ADB_Proto::tick(void){
 
-    //Initialize UART for ADB Protocol, it have to be initialised from thread which is used from
+    //Initialize UART for ADB Protocol, it have to be initialised from thread which it is used from
     if (!init_uart) {
         if (ADB_protocol == AP_SerialManager::SerialProtocol_ADB_Proto){
             ADB_Port->begin(AP_SERIALMANAGER_ADB_Proto_BAUD, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX); 
             init_uart = true;
+            //hal.uartD->begin(AP_SERIALMANAGER_ADB_Proto_BAUD, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX);
         }    
     }
-
-    sync_timer_counter_current = AP_HAL::micros() / 2500;
-
-    /* FOR TESTING UART
-    if (ADB_Port == hal.uartA) hal.uartD->write(0x0A);
-    if (ADB_Port == hal.uartB) hal.uartD->write(0x0B);
-    if (ADB_Port == hal.uartC) hal.uartD->write(0x0C);
-    if (ADB_Port == hal.uartD) hal.uartD->write(0x0D);
-    if (ADB_Port == hal.uartE) hal.uartD->write(0x0E);
-    if (ADB_Port == hal.uartF) hal.uartD->write(0x0F);
-    */
     
-    if (sync_timer_counter_current > sync_timer_counter_past) {
+    sync_timer_counter_current = AP_HAL::micros();
+    
+    if ((sync_timer_counter_current - sync_timer_counter_past) >= 3500) {
         //SET number of online ESCs and their addresses 
         if (set_active_devices){
             int i = 0;
@@ -130,7 +125,7 @@ void ADB_Proto::tick(void){
         uint16_t ind;
         uint32_t bytesAvailable;
 
-        //SCAN/Discovery of connected ESCs for the first 10 seconds after boot
+        // SCAN/Discovery connected ESCs for the first 10 seconds after boot
         if (!esc_discovery){
 
             if (!esc_discovery_started){
@@ -148,11 +143,8 @@ void ADB_Proto::tick(void){
             ind = parseToMsg(&checksum, ind);
             msg[ind++] = (~checksum) & 0x7f;
             msg[ind++] = ADB_LIGHT_END_BYTE;
-            //hal.uartE->write(msg, ind); 
-            //hal.uartD->write(msg, ind); 
-            ADB_Port->write(msg, ind);    
+            ADB_Port->write(msg, ind);
 
-            //bytesAvailable = hal.uartE->available();
             bytesAvailable = ADB_Port->available();
 
             if (bytesAvailable >= 1){
@@ -170,8 +162,7 @@ void ADB_Proto::tick(void){
             }
         }
 
-        // if ((esc_discovery) && (ADB_DEVICE_COUNT == 0)) hal.uartD->write(0x0e);
-        //Main cycle after ESC Discovery is finished
+        // Main cycle after ESC Discovery is finished
         if ((esc_discovery) && (ADB_DEVICE_COUNT != 0)){
 
             checksum = 0;
@@ -182,7 +173,7 @@ void ADB_Proto::tick(void){
             checksum += msg[ind++] = active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT];
             checksum += msg[ind++] = message_ids[GLOBAL_ID_COUNT];
 
-            //Set desired PWM value equal to RCOUT
+            // Set desired PWM value equal to RCOUT
             switch (active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]) {
                 case 0x00: 
                     desiredValue[active_device_addr[GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT]] = hal.rcout->read(CH_1);
@@ -216,29 +207,27 @@ void ADB_Proto::tick(void){
             ind = parseToMsg(&checksum, ind);  
             msg[ind++] = (~checksum) & 0x7f;
             msg[ind++] = ADB_LIGHT_END_BYTE;
-            // hal.uartE->write(msg, ind);
             
             ADB_Port->write(msg, ind);
 
-            //bytesAvailable = hal.uartE->available();
             bytesAvailable = ADB_Port->available();
 
-            //Read Available bytes from UART aand write it to RingBuffer
+            // Read Available bytes from UART aand write it to RingBuffer
             if (bytesAvailable >= 1) {
                 
                 for (uint32_t j = 0; j < bytesAvailable; j++){
                     //recBuf[j] = hal.uartE->read();
                     recBuf[j] = ADB_Port->read();
-                  // hal.uartD->write(recBuf[j]); 
+                  //hal.uartD->write(recBuf[j]); 
                 }
                 ADB_ringBuf.write(recBuf, bytesAvailable);
-            } 
+            }
             
         }
             
         GLOBAL_ADDR_COUNT++;
         
-        //Change ESC addresses cyclically
+        // Change ESC addresses and MSGs cyclically
         if ((GLOBAL_ADDR_COUNT % ADB_DEVICE_COUNT) == 0){
             GLOBAL_ADDR_COUNT = 0;
 
@@ -249,7 +238,7 @@ void ADB_Proto::tick(void){
             GLOBAL_ID_COUNT++;
         }
 
-        sync_timer_counter_past = sync_timer_counter_current;
+        sync_timer_counter_past = AP_HAL::micros();
     }
 }    
 
@@ -284,9 +273,9 @@ void ADB_Proto::msgProc(){
    
     if (!init_uart_2){
         //hal.uartD->begin(115200, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX);
+        hal.uartA->begin(115200, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_RX, AP_SERIALMANAGER_ADB_Proto_BUFSIZE_TX);        
         init_uart_2 = true;
     }
-
     uint8_t procByte;
     uint32_t ringBuf_available;
 
@@ -296,17 +285,18 @@ void ADB_Proto::msgProc(){
         //Read all available bytes from RingBuffer
         for (uint32_t i = 0; i < ringBuf_available; i++){
             ADB_ringBuf.read_byte(&procByte);
-
+            //hal.uartA->write(procByte);
             if (startRec && (procByte == 0x8e)){
                 startRec = false;
             }
             
             if (startRec){
                 recMsgBuf[recIndex++] = procByte;
-
+                
                 if (recIndex == ADB_REC_MSG_LEN){
                     recIndex = 0;
                     startRec = false;
+
                     //Unpack received msg/value
                     prepareMsg();
                 }
@@ -354,9 +344,12 @@ void ADB_Proto::prepareMsg(){
 	uint32_t value = 0;
 	int8_t deviceAddress = -1;
 	int8_t messageId = -1;
-	deviceAddress = (recMsgBuf[0] >> 4) & 0x07;
+    deviceAddress = (recMsgBuf[0] >> 4) & 0x07;
+    //hal.uartA->write(recMsgBuf[0]);
 	messageId = recMsgBuf[0] & 0x0f;
-	chcksum ^= value = (recMsgBuf[3] >> 4) & 0x07;
+    chcksum ^= value = (recMsgBuf[3] >> 4) & 0x07;
+
+    uint8_t temp_buf[4];
 
 	for(uint8_t i = 2 ; i > 0; i--){
 		value <<= 7;
@@ -368,7 +361,8 @@ void ADB_Proto::prepareMsg(){
 	chcksum = (~chcksum) & 0x0f;
 
     //Save which ESCs are responding
-    if((chcksum == (recMsgBuf[3] & 0x0f)) && !esc_discovery){
+    if((chcksum == (recMsgBuf[3] & 0x0f)) && !esc_discovery){ 
+
         switch (deviceAddress) {
             case 0:
                 discovered_esc.ch_1 = true;
@@ -397,49 +391,114 @@ void ADB_Proto::prepareMsg(){
         }
     }
 
+    processing_packet = false;
     //Save value received from ESC
     if((chcksum == (recMsgBuf[3] & 0x0f)) && (esc_discovery)){ 
         tmp_log.deviceAddr = deviceAddress;
+        
+        processing_packet = true;
+
+        tmp_log.good_msgs = good_packet_count;
+        tmp_log.bad_msgs = bad_packet_count;
+
+        uint32_t tmp_mask = 0;
+
+        int i;
+        bool isGreaterThanZero;
+
+        float val0, val1, val2, val3;
+        uint8_t *p = (uint8_t*)&value; 
+    
+        hal.uartA->write(0x0e);
+        hal.uartA->write(messageId);
+        hal.uartA->write(p, 4);
+        hal.uartA->write(0x0f);
+        
         switch (messageId)
             {
                 case 0x01:
                 {
-                    float val0 =  (float)value / 1024;
-                    tmp_log.speed = val0;
-                    //hal.uartD->write(value);
+                    for (i = 1; i < 17; i++){
+                        tmp_mask |= 1 << i;
+                    }
+                    value &= tmp_mask;
+                    val0 = value/1024.0f;
+
+                    if (0 & (1 << value)) isGreaterThanZero = true;
+                    else isGreaterThanZero = false;
+
+                    if (isGreaterThanZero) tmp_log.speed = -val0;
+                    else if (!isGreaterThanZero) tmp_log.speed = val0;
                 }
                     break;
                 case 0x02: 
                 {
-                    float val1 = (float)value / 8;
-                    //hal.uartD->write(value);     
-                    tmp_log.voltage_s = val1;
+                    for (i = 1; i < 11; i++){
+                        tmp_mask |= 1 << i;
+                    }
+                    value &= tmp_mask;
+                    val1 = value/8.0f;
+
+                    if (0 & (1 << value)) isGreaterThanZero = true;
+                    else isGreaterThanZero = false;
+  
+                    if (isGreaterThanZero) tmp_log.voltage_s = -val1;
+                    else if (!isGreaterThanZero) tmp_log.voltage_s = val1;
                 }
                     break;
                 case 0x03: 
                 {
-                    float val3 = (float)value / 8;
-                    tmp_log.current_s = val3;
-                    //hal.uartD->write(value);  
+                    for (i = 1; i < 12; i++){
+                        tmp_mask |= 1 << i;
+                    }
+                    value &= tmp_mask;
+                    val3 = value/8.0f;
+
+                    if (0 & (1 << value)) isGreaterThanZero = true;
+                    else isGreaterThanZero = false;
+                    
+                    if (isGreaterThanZero) tmp_log.current_s = -val3;
+                    else if (!isGreaterThanZero) tmp_log.current_s = val3;
                 }
                     break;
                 case 0x04: 
                 {
-                    float val2 = (float)value / 8;
+                    for (i = 0; i < 10; i++){
+                        tmp_mask |= 1 << i;
+                    }
+                    value &= tmp_mask;
+                    val2 = value/8.0f;
                     tmp_log.v_bus = val2;
-                    //hal.uartD->write(value);;
                 }
                     break;
                 case 0x05:
+                {
+                    for (i = 0; i < 12; i++){
+                        tmp_mask |= 1 << i;
+                    }
+                    value &= tmp_mask;
                     tmp_log.pwm = value;
-                    //hal.uartD->write(value); 
+                }
                     break;
                 case 0x06:
-                    tmp_log.temp = value - 31;
-                    //hal.uartD->write(value); 
+                {
+                    for (i = 0; i < 7; i++){
+                        tmp_mask |= 1 << i;
+                    }
+                    value &= tmp_mask;
+                    tmp_log.temp = value - 0x1f;
+                }
                     break;
                 default:
                     return;
-            }    
-	}
+            } 
+
+    }
+
+    if (esc_discovery){
+        if (!processing_packet) bad_packet_count++;
+        else if (processing_packet) good_packet_count++;
+    }
+    
+    
 }

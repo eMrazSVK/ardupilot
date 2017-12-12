@@ -47,6 +47,8 @@ typedef struct {
   float     v_bus;
   uint32_t  pwm;
   uint32_t  temp;
+  uint32_t good_msgs;
+  uint32_t bad_msgs;
 } internal_log_msg;
 
 typedef struct {
@@ -107,5 +109,8 @@ class ADB_Proto {
         bool set_active_devices;
         uint32_t esc_discovery_start;
         active_esc discovered_esc;
+        uint32_t good_packet_count;
+        uint32_t bad_packet_count;
+        bool processing_packet;
 }; 
 

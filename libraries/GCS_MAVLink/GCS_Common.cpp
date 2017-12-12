@@ -1188,7 +1188,10 @@ void GCS_MAVLINK::send_adb_esc_info(ADB_Proto &esc_data)
         esc_data.tmp_log.current_s,
         esc_data.tmp_log.v_bus,
         esc_data.tmp_log.pwm,
-        esc_data.tmp_log.temp
+        esc_data.tmp_log.temp,
+        esc_data.tmp_log.bad_msgs,
+        esc_data.tmp_log.good_msgs
+
     );
 }
 
