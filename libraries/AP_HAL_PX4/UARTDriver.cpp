@@ -206,7 +206,20 @@ void PX4UARTDriver::set_blocking_writes(bool blocking)
     _nonblocking_writes = !blocking;
 }
 
-bool PX4UARTDriver::tx_pending() { return false; }
+bool PX4UARTDriver::tx_pending() {
+    return !(_writebuf.empty());
+    /*
+    if ((_writebuf.get_size() - _writebuf.space() -1) == 0) return false;
+    else return true;
+    */
+}
+
+/*
+  discard bytes in writebuffer
+*/
+void PX4UARTDriver::flush_tx_buffer() {
+    _writebuf.clear();
+}
 
 /*
   return number of bytes available to be read from the buffer

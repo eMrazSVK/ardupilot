@@ -275,6 +275,8 @@ void Copter::fast_loop()
     // run the attitude controllers
     update_flight_mode();
 
+
+
     // update home from EKF if necessary
     update_home_from_EKF();
 
@@ -290,13 +292,6 @@ void Copter::fast_loop()
     if (should_log(MASK_LOG_ANY)) {
         Log_Sensor_Health();
     }
-
-/*
-    // sending/receiving ADB MSGs to/from ESCs
-#if ADB_PROTO_ENABLED == ENABLED
-    adb_light_proto.tick();
-#endif
-*/
 }
 
 
@@ -505,6 +500,12 @@ void Copter::one_hz_loop()
     terrain_logging();
 
     adsb.set_is_flying(!ap.land_complete);
+
+    // send info to gcs, if one of ESCs is disconnected
+#if ADB_PROTO_ENABLED == ENABLED
+    if (adb_light_proto.esc_disconnected) gcs().send_text(MAV_SEVERITY_WARNING, "ESC Disconnected");
+    if (adb_light_proto.errorCheck()) gcs().send_text(MAV_SEVERITY_WARNING, "ADB Protocol communication error");
+#endif
     
     // update error mask of sensors and subsystems. The mask uses the
     // MAV_SYS_STATUS_* values from mavlink. If a bit is set then it

@@ -21,6 +21,8 @@
         "chrono": "cpp",
         "istream": "cpp",
         "ratio": "cpp",
-        "ios": "cpp"
+        "ios": "cpp",
+        "memory": "cpp",
+        "utility": "cpp"
     }
 }

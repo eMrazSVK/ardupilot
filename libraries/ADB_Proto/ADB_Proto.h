@@ -20,7 +20,6 @@
 #include <stdint.h>
 #include <AP_HAL/AP_HAL.h>
 #include <AP_SerialManager/AP_SerialManager.h>
-#include <AP_HAL/utility/RingBuffer.h>
 
 
 #define ADB_MSG_LENGTH          42
@@ -37,6 +36,9 @@
 #define ADB_LIGHT_HEADER_BYTE   0x8e
 #define ADB_LIGHT_END_BYTE      0x8f
 #define ADB_MESSAGE_ID_COUNT    6
+#define SEND_EVERY_NTH_TIME     1
+#define RECEIVE_TIMEOUT         2500
+#define CONNECTION_TIMEOUT_MS   5000
 
 
 typedef struct {
@@ -67,50 +69,61 @@ class ADB_Proto {
         ADB_Proto();
         ~ADB_Proto();
         void init(const AP_SerialManager &serial_manager);
+        internal_log_msg tmp_log;
+        bool esc_disconnected;
+        bool errorCheck();
+
+    private:
         void tick(void);
+        void test_tick(void);
+        void test_msgProc();
         int GLOBAL_ADDR_COUNT;
         int GLOBAL_ID_COUNT;
         void msgProc();
-        internal_log_msg tmp_log;
-        
-    private:
         //port used for ADB Protocol 
         AP_HAL::UARTDriver *ADB_Port;
         AP_SerialManager::SerialProtocol ADB_protocol; 
-        bool tmp;
         bool init_uart;
-        bool init_uart_2;
         uint16_t desiredValue[8]; // range 800 - 2000 ms
-        uint32_t sync_timer_counter_current;
-        uint32_t sync_timer_counter_past;
         int parseToMsg(uint16_t *checksum, uint16_t actualIndex);
         void recByteProc(uint8_t received);
         void prepareMsg();
+        void discoverEsc(uint32_t discovery_time);
+        void calc_esc_responses();
+        uint32_t errorCount;
+        uint32_t lastErrorTime;
         uint8_t msg[ADB_MSG_LENGTH];
         uint8_t recBuf[ADB_REC_BUF_SIZE];
+        uint32_t current_msg_size;
+        uint8_t count_to_n;
         uint8_t recMsgBuf[ADB_REC_MSG_LEN];
+        uint32_t discover_time_ms;
         int recIndex;
 		int startRec;
         int ADB_DEVICE_COUNT;
         int MOTOR_COUNT;
         int8_t active_device_addr[ADB_MAX_DEVICE_COUNT];
-        ByteBuffer ADB_ringBuf;
+        bool active_channels[ADB_MAX_DEVICE_COUNT];
         uint16_t ADB_LookUpTableMask[17] = {
 								0x0000, 0x0001, 0x0003, 0x0007,
 								0x000f, 0x001f, 0x003f, 0x007f,
 								0x00ff, 0x01ff, 0x03ff, 0x07ff,
 								0x0fff, 0x1fff, 0x3fff, 0x7fff,
 								0xffff
-							    };  
+							    };
         uint8_t device_address[8] = {0, 1, 2, 3, 4, 5, 6, 7};  
         uint8_t message_ids[6] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
         bool esc_discovery;
         bool esc_discovery_started;
         bool set_active_devices;
+        bool STOP_SEND;
         uint32_t esc_discovery_start;
+        uint32_t last_discovery_time_ms;
         active_esc discovered_esc;
         uint32_t good_packet_count;
         uint32_t bad_packet_count;
         bool processing_packet;
+        int status_counter;
+        uint32_t esc_responses_ms[ADB_MAX_DEVICE_COUNT];
 }; 
 

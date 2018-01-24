@@ -16,6 +16,7 @@ public:
     bool is_initialized();
     void set_blocking_writes(bool blocking);
     bool tx_pending();
+    void flush_tx_buffer();
 
     /* PX4 implementations of Stream virtual methods */
     uint32_t available() override;

@@ -456,7 +456,7 @@ private:
     AP_Frsky_Telem frsky_telemetry;
 #endif
 
-    // ADB Protocol
+    // ADB Protocol instance
 #if ADB_PROTO_ENABLED == ENABLED
     ADB_Proto adb_light_proto;
 #endif
