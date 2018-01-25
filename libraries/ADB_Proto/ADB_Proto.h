@@ -55,7 +55,7 @@ typedef struct {
 
 typedef struct {
     bool ch_1;
-    bool ch_2;    
+    bool ch_2;
     bool ch_3;
     bool ch_4;
     bool ch_5;
@@ -64,14 +64,26 @@ typedef struct {
     bool ch_8;
 } active_esc;
 
+enum error_type {
+    communication_error = 1,
+    esc_disconnected    = 2
+};
+
+typedef struct {
+    int esc_id;
+    error_type error;
+} esc_error;
+
+
 class ADB_Proto {
     public:
         ADB_Proto();
         ~ADB_Proto();
         void init(const AP_SerialManager &serial_manager);
         internal_log_msg tmp_log;
-        bool esc_disconnected;
-        bool errorCheck();
+        void errorCheck();
+        bool error_occured;
+        char *get_warning_string();
 
     private:
         void tick(void);
@@ -82,7 +94,7 @@ class ADB_Proto {
         void msgProc();
         //port used for ADB Protocol 
         AP_HAL::UARTDriver *ADB_Port;
-        AP_SerialManager::SerialProtocol ADB_protocol; 
+        AP_SerialManager::SerialProtocol ADB_protocol;
         bool init_uart;
         uint16_t desiredValue[8]; // range 800 - 2000 ms
         int parseToMsg(uint16_t *checksum, uint16_t actualIndex);
@@ -111,8 +123,9 @@ class ADB_Proto {
 								0x0fff, 0x1fff, 0x3fff, 0x7fff,
 								0xffff
 							    };
-        uint8_t device_address[8] = {0, 1, 2, 3, 4, 5, 6, 7};  
+        uint8_t device_address[8] = {0, 1, 2, 3, 4, 5, 6, 7};
         uint8_t message_ids[6] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
+        char warning_msg[100];
         bool esc_discovery;
         bool esc_discovery_started;
         bool set_active_devices;
@@ -125,5 +138,7 @@ class ADB_Proto {
         bool processing_packet;
         int status_counter;
         uint32_t esc_responses_ms[ADB_MAX_DEVICE_COUNT];
-}; 
+        esc_error current_esc_error;
+        int not_responding_esc[ADB_MAX_DEVICE_COUNT];
+};
 

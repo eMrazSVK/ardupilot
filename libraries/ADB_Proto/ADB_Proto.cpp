@@ -21,7 +21,7 @@
 */
 
 #include "ADB_Proto.h"
-//#include "/home/edo/ardupilot/ArduCopter/Copter.h"
+
 extern const AP_HAL::HAL& hal;
 
 ADB_Proto::ADB_Proto() {}
@@ -45,7 +45,6 @@ void ADB_Proto::init(const AP_SerialManager &serial_manager) {
     count_to_n = 0;
     STOP_SEND = false;
     status_counter = 0;
-    esc_disconnected = false;
     discover_time_ms = 10000;
     last_discovery_time_ms = 0;
 
@@ -194,7 +193,7 @@ void ADB_Proto::test_msgProc(void) {
 }
 */
 
-void ADB_Proto::tick(void){
+void ADB_Proto::tick(void) {
     
     //Initialize UART for ADB Protocol, it have to be initialised from thread which it is used from
     if (!init_uart) {
@@ -221,7 +220,7 @@ void ADB_Proto::tick(void){
                 }
                 if (!esc_discovery) {
                     discoverEsc(discover_time_ms);
-                    status_counter = 0;
+                    status_counter = -1;
                 }
                 if (esc_discovery && (ADB_DEVICE_COUNT != 0)) {
                     current_msg_size = 0;
@@ -292,11 +291,9 @@ void ADB_Proto::tick(void){
                         GLOBAL_ID_COUNT++;
                         if ((GLOBAL_ID_COUNT % ADB_MESSAGE_ID_COUNT) == 0) GLOBAL_ID_COUNT = 0;
                     }
-                    if (errorCheck()) {
-                        bad_packet_count = 999;
-                        // error handling / warning will be here
-                    }
+
                     calc_esc_responses();
+                    errorCheck();   
                 }
             } else ADB_Port->flush_tx_buffer();
         }
@@ -465,15 +462,17 @@ void ADB_Proto::tick(void){
 }
 
 // return true if communication error is detected
-bool ADB_Proto::errorCheck() {
+void ADB_Proto::errorCheck() {
 
     if ((AP_HAL::millis() - lastErrorTime) > 60000) {
         errorCount = 0;
     }
 
-    if (errorCount >= 2) return true; 
+    if (errorCount >= 2) {
+        current_esc_error.error = communication_error;
+        error_occured = true; 
+    }
 
-    return false;
 }
 
 // discover connected ESCs for first xx ms
@@ -824,6 +823,7 @@ void ADB_Proto::prepareMsg() {
             bad_packet_count++;
             errorCount++;
             lastErrorTime = AP_HAL::millis();
+            current_esc_error.esc_id = deviceAddress;
         }
         else if (processing_packet) good_packet_count++;
     }
@@ -835,14 +835,63 @@ void ADB_Proto::calc_esc_responses() {
         if ((AP_HAL::millis() - esc_responses_ms[active_device_addr[i]]) > CONNECTION_TIMEOUT_MS) {
             // just testing with err msgs
             //esc_discovery = false;
-            esc_disconnected = true;
+            current_esc_error.error = esc_disconnected;
+            current_esc_error.esc_id = i;
+            error_occured = true;
             //bad_packet_count = 666;
             //tmp_log.bad_msgs = bad_packet_count;
             // do something if esc has disconnected - to be implemented
+
         }
         else {
-            esc_disconnected = false;
             // do something when esc connected or reconnected
+            error_occured  = false;
         }
     }
+}
+
+// return warning for MAVLink
+char *ADB_Proto::get_warning_string() {
+    
+    if (error_occured) {
+        switch (current_esc_error.error) {
+            case communication_error:
+                strcpy(warning_msg, "Communication error with ESC: ");
+                break;
+            case esc_disconnected:
+                strcpy(warning_msg, "ESC with following ID has been disconnected: ");
+                break;
+        }
+
+        
+        switch (current_esc_error.esc_id) {
+            case 0:
+                strncat(warning_msg, "0\0",2);
+                break;
+            case 1:
+                strncat(warning_msg, "1\0",2);
+                break;
+            case 2:
+                strncat(warning_msg, "2\0",2);
+                break;
+            case 3:
+                strncat(warning_msg, "3\0",2);
+                break;
+            case 4:
+                strncat(warning_msg, "4\0",2);
+                break;
+            case 5:
+                strncat(warning_msg, "5\0",2);
+                break;
+            case 6:
+                strncat(warning_msg, "6\0",2);
+                break;
+            case 7:
+                strncat(warning_msg, "7\0",2);
+                break;
+        }
+        
+        return warning_msg;
+    }
+    else return nullptr;
 }

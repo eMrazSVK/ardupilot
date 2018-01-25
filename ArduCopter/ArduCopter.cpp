@@ -382,7 +382,7 @@ void Copter::ten_hz_logging_loop()
         Log_Write_EKF_POS();
     }
 
-    //Send ADB Packet to GCS
+    // send ADB Packet to GCS
     gcs().send_message(MSG_ADB_ESC);
     
     if (should_log(MASK_LOG_MOTBATT)) {
@@ -501,10 +501,9 @@ void Copter::one_hz_loop()
 
     adsb.set_is_flying(!ap.land_complete);
 
-    // send info to gcs, if one of ESCs is disconnected
+    // send info to gcs, if one of ESCs is disconnected or error occured
 #if ADB_PROTO_ENABLED == ENABLED
-    if (adb_light_proto.esc_disconnected) gcs().send_text(MAV_SEVERITY_WARNING, "ESC Disconnected");
-    if (adb_light_proto.errorCheck()) gcs().send_text(MAV_SEVERITY_WARNING, "ADB Protocol communication error");
+    if (adb_light_proto.error_occured) gcs().send_text(MAV_SEVERITY_WARNING, adb_light_proto.get_warning_string());
 #endif
     
     // update error mask of sensors and subsystems. The mask uses the
