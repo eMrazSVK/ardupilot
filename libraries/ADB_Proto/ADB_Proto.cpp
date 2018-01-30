@@ -292,9 +292,20 @@ void ADB_Proto::tick(void) {
                         if ((GLOBAL_ID_COUNT % ADB_MESSAGE_ID_COUNT) == 0) GLOBAL_ID_COUNT = 0;
                     }
 
+                    // testing communication error
+                    /*
+                    if (!STOP_SEND && (AP_HAL::millis() > 15000)) {
+                        errorCount = 5;
+                        STOP_SEND = true;
+                        lastErrorTime = AP_HAL::millis();
+                    }
+                    */
+                    
                     calc_esc_responses();
                     errorCheck();   
                 }
+                
+
             } else ADB_Port->flush_tx_buffer();
         }
         if ((status_counter == -1) || (status_counter == 0) || (status_counter == 1) || (status_counter == 2)) {
@@ -470,12 +481,19 @@ void ADB_Proto::errorCheck() {
 
     if (errorCount >= 2) {
         current_esc_error.error = communication_error;
-        error_occured = true; 
+        error_occured = true;
+    }
+
+    if (current_esc_error.error = communication_error) {
+        if (error_occured && ((AP_HAL::millis() - lastErrorTime) > 5000)) {
+            error_occured = false;
+            errorCount = 0;
+        }
     }
 
 }
 
-// discover connected ESCs for first xx ms
+// discover connected ESCs for first xy ms
 void ADB_Proto::discoverEsc(uint32_t discovery_time) {
     static uint32_t message_last_sent_us;
     uint16_t checksum;
@@ -609,7 +627,6 @@ int ADB_Proto::parseToMsg(uint16_t *checksum, uint16_t actualIndex) {
 }
 
 void ADB_Proto::msgProc() {
-    
     uint8_t procByte;
 
     for (uint32_t i = 0; i < current_msg_size; i++) {
@@ -831,66 +848,69 @@ void ADB_Proto::prepareMsg() {
 
 // searching if any of discovered ESCs disconnected
 void ADB_Proto::calc_esc_responses() {
+    int j = 0;
+
     for (int i = 0; i < ADB_DEVICE_COUNT; i++) {
         if ((AP_HAL::millis() - esc_responses_ms[active_device_addr[i]]) > CONNECTION_TIMEOUT_MS) {
-            // just testing with err msgs
-            //esc_discovery = false;
+            not_responding_esc[j++] = active_device_addr[i];
             current_esc_error.error = esc_disconnected;
             current_esc_error.esc_id = i;
             error_occured = true;
-            //bad_packet_count = 666;
-            //tmp_log.bad_msgs = bad_packet_count;
-            // do something if esc has disconnected - to be implemented
-
         }
+
         else {
             // do something when esc connected or reconnected
             error_occured  = false;
         }
     }
+    if (error_occured) not_responding_esc[j] = -1; 
 }
 
 // return warning for MAVLink
 char *ADB_Proto::get_warning_string() {
-    
     if (error_occured) {
         switch (current_esc_error.error) {
             case communication_error:
-                strcpy(warning_msg, "Communication error with ESC: ");
+                strcpy(warning_msg, "ESC comm error");
                 break;
             case esc_disconnected:
-                strcpy(warning_msg, "ESC with following ID has been disconnected: ");
+                strcpy(warning_msg, "ESCs disconnected, IDs: ");
                 break;
         }
 
-        
-        switch (current_esc_error.esc_id) {
-            case 0:
-                strncat(warning_msg, "0\0",2);
-                break;
-            case 1:
-                strncat(warning_msg, "1\0",2);
-                break;
-            case 2:
-                strncat(warning_msg, "2\0",2);
-                break;
-            case 3:
-                strncat(warning_msg, "3\0",2);
-                break;
-            case 4:
-                strncat(warning_msg, "4\0",2);
-                break;
-            case 5:
-                strncat(warning_msg, "5\0",2);
-                break;
-            case 6:
-                strncat(warning_msg, "6\0",2);
-                break;
-            case 7:
-                strncat(warning_msg, "7\0",2);
-                break;
+        if (current_esc_error.error == esc_disconnected) {
+            for (int i = 0; i < ADB_DEVICE_COUNT; i++) {
+                if (not_responding_esc[i] == -1) break;
+
+                switch (not_responding_esc[i]) {
+                    case 0:
+                        strncat(warning_msg, "0 ",2);
+                        break;
+                    case 1:
+                        strncat(warning_msg, "1 ",2);
+                        break;
+                    case 2:
+                        strncat(warning_msg, "2 ",2);
+                        break;
+                    case 3:
+                        strncat(warning_msg, "3 ",2);
+                        break;
+                    case 4:
+                        strncat(warning_msg, "4 ",2);
+                        break;
+                    case 5:
+                        strncat(warning_msg, "5 ",2);
+                        break;
+                    case 6:
+                        strncat(warning_msg, "6 ",2);
+                        break;
+                    case 7:
+                        strncat(warning_msg, "7 ",2);
+                        break;
+                }
+            }
         }
-        
+        strncat(warning_msg, "\0",1);
         return warning_msg;
     }
     else return nullptr;

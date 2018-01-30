@@ -140,5 +140,6 @@ class ADB_Proto {
         uint32_t esc_responses_ms[ADB_MAX_DEVICE_COUNT];
         esc_error current_esc_error;
         int not_responding_esc[ADB_MAX_DEVICE_COUNT];
+
 };
 
