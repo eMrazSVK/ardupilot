@@ -484,7 +484,7 @@ void ADB_Proto::errorCheck() {
         error_occured = true;
     }
 
-    if (current_esc_error.error = communication_error) {
+    if (current_esc_error.error == communication_error) {
         if (error_occured && ((AP_HAL::millis() - lastErrorTime) > 5000)) {
             error_occured = false;
             errorCount = 0;

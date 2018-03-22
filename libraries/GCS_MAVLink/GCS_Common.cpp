@@ -1179,6 +1179,7 @@ void GCS_MAVLINK::send_ahrs(AP_AHRS &ahrs)
 //Send ADB ESC to MAVLink
 void GCS_MAVLINK::send_adb_esc_info(ADB_Proto &esc_data)
 {
+    
     mavlink_msg_adb_esc_data_send(
         chan,
         AP_HAL::millis(),
@@ -1193,6 +1194,7 @@ void GCS_MAVLINK::send_adb_esc_info(ADB_Proto &esc_data)
         esc_data.tmp_log.good_msgs
 
     );
+    
 }
 
 /*
